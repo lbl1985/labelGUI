@@ -1,4 +1,4 @@
-function varargout = trackBB(varargin)
+function varargout = trackBB_img(varargin)
 % TRACKBB MATLAB code for trackBB.fig
 %      TRACKBB, by itself, creates a new TRACKBB or raises the existing
 %      singleton*.
@@ -57,7 +57,7 @@ handles.tmpPerson = [];
 handles.selPerson = [];
 % Choose default command line output for trackBB
 handles.output = hObject;
-
+handles.isImages = true;
 % Update handles structure
 guidata(hObject, handles);
 
@@ -78,7 +78,12 @@ varargout{1} = handles.output;
 % Calling Function for updating Image 
 function handles = updateImage(handles)
 
-handles.I = read(handles.cam.obj, handles.cam.currentFrame);
+if (handles.isImages)
+    handles.I = imread(fullfile(handles.cam.obj, handles.cam.fileNames{handles.cam.currentFrame}));
+else
+    handles.I = read(handles.cam.obj, handles.cam.currentFrame);
+end
+
 imshow(handles.I, 'Parent', handles.axesCam);
 set(handles.textVideoInfo, 'String', ['Video: ' handles.cam.VideoName ...
     ' Frame:' num2str(handles.cam.currentFrame)]);
@@ -157,7 +162,12 @@ if ~isempty(handles.selPerson)
 
     nT = length(handles.tP.tAll);
     for i = 1 : nT
-        imshow(read(handles.cam.obj, handles.tP.tAll(i)), 'Parent', handles.axesTrack);
+        if (handles.isImages)
+            imshow(imread(fullfile(handles.cam.obj, handles.cam.fileNames{handles.tP.tAll(i)})), ...
+                'Parent', handles.axesTrack);
+        else
+            imshow(read(handles.cam.obj, handles.tP.tAll(i)), 'Parent', handles.axesTrack);
+        end
         hold on
         rectangle('Position', handles.tP.rectAll(i, :), 'EdgeColor', 'r',  ...
             'LineWidth', 2, 'Parent', handles.axesTrack);
@@ -298,12 +308,28 @@ handles.Person = [];
 handles.tmpPerson = [];
 handles.selPerson = [];
 
-handles.cam.VideoFile = get(handles.editCam, 'String');
-ind = strfind(handles.cam.VideoFile, '/');
-handles.cam.VideoName = handles.cam.VideoFile(ind(end) + 1 : end - 4);
-handles.cam.obj = VideoReader(handles.cam.VideoFile);
-handles.cam.NumberOfFrames = handles.cam.obj.NumberOfFrames;
-handles.cam.currentFrame = 1;
+if (~handles.isImages)
+
+    handles.cam.VideoFile = get(handles.editCam, 'String');
+    ind = strfind(handles.cam.VideoFile, '/');
+    handles.cam.VideoName = handles.cam.VideoFile(ind(end) + 1 : end - 4);
+    handles.cam.obj = VideoReader(handles.cam.VideoFile);
+    handles.cam.NumberOfFrames = handles.cam.obj.NumberOfFrames;
+    handles.cam.currentFrame = 1;
+else
+    handles.cam.VideoFolder = get(handles.editCam, 'String');
+    ind = strfind(handles.cam.VideoFolder, '/');
+    if (ind(end) == length(handles.cam.VideoFolder) ) % ending with '/'
+        handles.cam.VideoName = handles.cam.VideoFolder(ind(end-1)+1:ind(end)-1);
+    else
+        handles.cam.VideoName = handles.cam.VideoFolder(ind(end) +1 : end);
+    end
+    handles.cam.obj = handles.cam.VideoFolder;
+    handles.cam.VideoFile = handles.cam.VideoFolder;
+    [~, handles.cam.fileNames, handles.cam.NumberOfFrames] = rfdatabase(handles.cam.VideoFolder, 'img_', '.jpg');
+    handles.cam.currentFrame = 1;
+end
+
 set(handles.sliderCam, 'Max', handles.cam.NumberOfFrames);
 set(handles.sliderCam, 'SliderStep', [1/(handles.cam.NumberOfFrames -1) 0.1]);
 set(handles.sliderCam, 'Value', 1);
